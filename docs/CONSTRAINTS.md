@@ -8,8 +8,8 @@
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
-| 정산 확정 상태 관리 (PENDING → CONFIRMED → PAID) | 미구현 | |
-| 동일 기간 중복 정산 방지 로직 | 미구현 | |
+| 정산 확정 상태 관리 (PENDING → CONFIRMED → PAID) | 구현됨 | Settlement 엔티티 + PATCH API |
+| 동일 기간 중복 정산 방지 로직 | 구현됨 | (creatorId, month) 유니크 제약 + CONFIRMED 중복 요청 400 처리 |
 | 정산 내역 CSV 다운로드 | 미구현 | |
 | 수수료율 변경 이력 관리 | 미구현 | 수수료율은 코드 상수(20%)로 고정 |
 
@@ -30,6 +30,8 @@
 | 글로벌 예외 핸들러 | `GlobalExceptionHandler` (`@RestControllerAdvice`) — `IllegalArgumentException` → 400, `MethodArgumentNotValidException` → 400, `HttpMessageNotReadableException` → 400, 그 외 → 500 |
 | 누적 환불 초과 방지 | `CancellationRecordService`에서 기존 환불 합계 조회 후 서비스 레이어 검증 |
 | 중복 판매 ID 방지 | `SaleRecordService`에서 `existsById` 선조회 후 중복 시 400 반환 |
+| 정산 확정 상태 관리 | `Settlement` 엔티티 + `SettlementStatus` enum + PATCH API로 PENDING → CONFIRMED → PAID 전환 |
+| 크리에이터 / 강의 런타임 등록 | `POST /creators`, `POST /courses` API 구현 |
 
 ---
 

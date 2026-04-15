@@ -39,6 +39,9 @@ class SettlementCalculationApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.creatorId").value("creator-1"))
                 .andExpect(jsonPath("$.month").value("2025-03"))
+                .andExpect(jsonPath("$.status").value("PENDING"))   // 미확정 상태
+                .andExpect(jsonPath("$.confirmedAt").doesNotExist()) // 스냅샷 없음
+                .andExpect(jsonPath("$.paidAt").doesNotExist())
                 .andExpect(jsonPath("$.totalSales").value(260000))
                 .andExpect(jsonPath("$.totalRefunds").value(110000))
                 .andExpect(jsonPath("$.netSales").value(150000))

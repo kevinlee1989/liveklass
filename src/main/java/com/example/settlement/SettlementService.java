@@ -35,32 +35,62 @@ public class SettlementService {
 
     private final SaleRecordRepository saleRecordRepository;
     private final CancellationRecordRepository cancellationRecordRepository;
+    private final SettlementRepository settlementRepository;
+
+    // ── GET: 상태 확인 + 금액 조회 ────────────────────────────────
 
     public MonthlySettlementResponse calculate(String creatorId, YearMonth month) {
-        OffsetDateTime from = month.atDay(1).atStartOfDay(KST).toOffsetDateTime();
-        OffsetDateTime to = month.plusMonths(1).atDay(1).atStartOfDay(KST).toOffsetDateTime();
-
-        List<SaleRecord> sales = saleRecordRepository.findByCreatorAndPaidAtBetween(creatorId, from, to);
-        List<CancellationRecord> cancellations = cancellationRecordRepository.findByCreatorAndCanceledAtBetween(creatorId, from, to);
-
-        BigDecimal totalSales = sum(sales.stream().map(SaleRecord::getAmount).toList());
-        BigDecimal totalRefunds = sum(cancellations.stream().map(CancellationRecord::getRefundAmount).toList());
-        BigDecimal netSales = totalSales.subtract(totalRefunds);
-        BigDecimal platformFee = fee(netSales);
-        BigDecimal settlementAmount = netSales.subtract(platformFee);
-
-        return new MonthlySettlementResponse(
-                creatorId,
-                month.toString(),
-                totalSales,
-                totalRefunds,
-                netSales,
-                platformFee,
-                settlementAmount,
-                sales.size(),
-                cancellations.size()
-        );
+        // CONFIRMED / PAID 이면 스냅샷 반환
+        return settlementRepository.findByCreatorIdAndMonth(creatorId, month.toString())
+                .map(MonthlySettlementResponse::from)
+                .orElseGet(() -> computePending(creatorId, month));
     }
+
+    // ── PATCH: 상태 전환 ──────────────────────────────────────────
+
+    @Transactional
+    public MonthlySettlementResponse confirm(String creatorId, YearMonth month) {
+        settlementRepository.findByCreatorIdAndMonth(creatorId, month.toString())
+                .ifPresent(existing -> {
+                    if (existing.getStatus() == SettlementStatus.CONFIRMED) {
+                        throw new IllegalArgumentException("이미 확정된 정산입니다: " + creatorId + " " + month);
+                    }
+                    if (existing.getStatus() == SettlementStatus.PAID) {
+                        throw new IllegalArgumentException("이미 지급 완료된 정산입니다: " + creatorId + " " + month);
+                    }
+                });
+
+        MonthlySettlementResponse calc = computePending(creatorId, month);
+
+        Settlement settlement = Settlement.confirm(
+                creatorId, month.toString(),
+                calc.totalSales(), calc.totalRefunds(), calc.netSales(),
+                calc.platformFee(), calc.settlementAmount(),
+                calc.saleCount(), calc.cancellationCount()
+        );
+
+        return MonthlySettlementResponse.from(settlementRepository.save(settlement));
+    }
+
+    @Transactional
+    public MonthlySettlementResponse pay(String creatorId, YearMonth month) {
+        Settlement settlement = settlementRepository
+                .findByCreatorIdAndMonth(creatorId, month.toString())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "확정되지 않은 정산입니다. 먼저 CONFIRMED 처리가 필요합니다: " + creatorId + " " + month));
+
+        if (settlement.getStatus() == SettlementStatus.PAID) {
+            throw new IllegalArgumentException("이미 지급 완료된 정산입니다: " + creatorId + " " + month);
+        }
+        if (settlement.getStatus() != SettlementStatus.CONFIRMED) {
+            throw new IllegalArgumentException("CONFIRMED 상태에서만 PAID로 전환할 수 있습니다.");
+        }
+
+        settlement.markAsPaid();
+        return MonthlySettlementResponse.from(settlement);
+    }
+
+    // ── 운영자 기간별 집계 ────────────────────────────────────────
 
     public SettlementSummaryResponse summarize(LocalDate from, LocalDate to) {
         OffsetDateTime fromDt = from.atStartOfDay(KST).toOffsetDateTime();
@@ -75,12 +105,10 @@ public class SettlementService {
         Map<String, List<CancellationRecord>> cancellationsByCreator = cancellations.stream()
                 .collect(Collectors.groupingBy(c -> c.getSaleRecord().getCourse().getCreator().getId()));
 
-        // 판매 또는 취소가 있는 전체 크리에이터
         Set<String> allCreatorIds = new HashSet<>();
         allCreatorIds.addAll(salesByCreator.keySet());
         allCreatorIds.addAll(cancellationsByCreator.keySet());
 
-        // 크리에이터 이름 수집
         Map<String, String> creatorNames = new HashMap<>();
         sales.forEach(s -> creatorNames.put(
                 s.getCourse().getCreator().getId(),
@@ -103,13 +131,8 @@ public class SettlementService {
                     return new CreatorSettlementSummary(
                             creatorId,
                             creatorNames.get(creatorId),
-                            totalSales,
-                            totalRefunds,
-                            netSales,
-                            platformFee,
-                            settlementAmount,
-                            creatorSales.size(),
-                            creatorCancellations.size()
+                            totalSales, totalRefunds, netSales, platformFee, settlementAmount,
+                            creatorSales.size(), creatorCancellations.size()
                     );
                 })
                 .sorted(Comparator.comparing(CreatorSettlementSummary::creatorId))
@@ -119,6 +142,28 @@ public class SettlementService {
                 .map(CreatorSettlementSummary::settlementAmount).toList());
 
         return new SettlementSummaryResponse(from.toString(), to.toString(), settlements, totalSettlementAmount);
+    }
+
+    // ── 내부 헬퍼 ─────────────────────────────────────────────────
+
+    private MonthlySettlementResponse computePending(String creatorId, YearMonth month) {
+        OffsetDateTime from = month.atDay(1).atStartOfDay(KST).toOffsetDateTime();
+        OffsetDateTime to = month.plusMonths(1).atDay(1).atStartOfDay(KST).toOffsetDateTime();
+
+        List<SaleRecord> sales = saleRecordRepository.findByCreatorAndPaidAtBetween(creatorId, from, to);
+        List<CancellationRecord> cancellations = cancellationRecordRepository.findByCreatorAndCanceledAtBetween(creatorId, from, to);
+
+        BigDecimal totalSales = sum(sales.stream().map(SaleRecord::getAmount).toList());
+        BigDecimal totalRefunds = sum(cancellations.stream().map(CancellationRecord::getRefundAmount).toList());
+        BigDecimal netSales = totalSales.subtract(totalRefunds);
+        BigDecimal platformFee = fee(netSales);
+        BigDecimal settlementAmount = netSales.subtract(platformFee);
+
+        return MonthlySettlementResponse.pending(
+                creatorId, month.toString(),
+                totalSales, totalRefunds, netSales, platformFee, settlementAmount,
+                sales.size(), cancellations.size()
+        );
     }
 
     private BigDecimal sum(List<BigDecimal> values) {

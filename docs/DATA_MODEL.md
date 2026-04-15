@@ -60,6 +60,32 @@ Creator ──< Course ──< SaleRecord ──< CancellationRecord
 
 ---
 
+## Settlement (정산 확정 내역)
+
+테이블명: `settlements`
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | BIGINT | PK, DB 자동 생성 |
+| creator_id | VARCHAR | 크리에이터 ID (FK 없음, 논리적 참조) |
+| month | VARCHAR | 정산 연월 (예: "2025-03") |
+| status | VARCHAR | 정산 상태 (`PENDING` / `CONFIRMED` / `PAID`) |
+| total_sales | NUMERIC(12,2) | 확정 시점 총 판매금액 스냅샷 |
+| total_refunds | NUMERIC(12,2) | 확정 시점 총 환불금액 스냅샷 |
+| net_sales | NUMERIC(12,2) | 확정 시점 순판매금액 스냅샷 |
+| platform_fee | NUMERIC(12,2) | 확정 시점 플랫폼 수수료 스냅샷 |
+| settlement_amount | NUMERIC(12,2) | 확정 시점 정산 예정 금액 스냅샷 |
+| sale_count | INT | 확정 시점 판매 건수 스냅샷 |
+| cancellation_count | INT | 확정 시점 취소 건수 스냅샷 |
+| confirmed_at | TIMESTAMPTZ | 운영자 확정 일시 |
+| paid_at | TIMESTAMPTZ | 지급 완료 일시 (nullable) |
+
+**유니크 제약:** `(creator_id, month)` — 동일 크리에이터·월 중복 정산 방지
+
+> `PENDING` 상태는 DB에 레코드가 없는 상태입니다. GET 요청 시 실시간 계산하여 반환하며, 레코드는 `CONFIRMED` 전환 시점에 처음 생성됩니다.
+
+---
+
 ## 핵심 설계 원칙
 
 **판매와 취소의 정산 월은 독립적으로 계산됩니다.**
@@ -81,4 +107,14 @@ SaleRecord → Course → Creator
 CancellationRecord에서 크리에이터를 찾으려면:
 ```
 CancellationRecord → SaleRecord → Course → Creator
+```
+
+**정산 상태 흐름**
+
+```
+PENDING (레코드 없음, 동적 계산)
+   ↓ PATCH { "status": "CONFIRMED" }
+CONFIRMED (스냅샷 저장, 금액 고정)
+   ↓ PATCH { "status": "PAID" }
+PAID (paidAt 기록, 재지급 방지)
 ```

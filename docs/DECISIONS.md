@@ -137,3 +137,49 @@ if (saleRecordRepository.existsById(request.id())) {
 ```
 
 **이유**: Spring Data JPA의 `save()`는 ID가 존재하면 UPDATE(upsert)를 수행하므로 중복 ID를 자동으로 거절하지 않음. `existsById` 선조회로 명시적으로 방지하고 400 반환
+
+---
+
+### 11. PENDING 상태는 DB에 저장하지 않는다
+
+Settlement 레코드는 CONFIRMED 요청 시점에만 생성됩니다.
+
+**이유**: PENDING은 "아직 확정 전" 상태이므로, 확정하지 않은 모든 (creatorId, month) 조합에 대해 미리 레코드를 만들면 불필요한 데이터가 쌓임. GET 요청 시 DB 조회 후 레코드가 없으면 실시간 계산하여 PENDING으로 반환하는 방식이 더 단순함
+
+```java
+public MonthlySettlementResponse calculate(String creatorId, YearMonth month) {
+    return settlementRepository.findByCreatorIdAndMonth(creatorId, month.toString())
+            .map(MonthlySettlementResponse::from)       // CONFIRMED / PAID → 스냅샷
+            .orElseGet(() -> computePending(creatorId, month)); // 없으면 동적 계산
+}
+```
+
+---
+
+### 12. CONFIRMED 시점에 모든 계산값을 스냅샷으로 저장한다
+
+settlementAmount만 저장하지 않고 totalSales, totalRefunds, netSales, platformFee, saleCount, cancellationCount 전체를 저장합니다.
+
+**이유**: 확정 이후 판매/취소 데이터가 변동되어도 확정 시점 기준을 정확히 재현할 수 있어야 함. 금액만 저장하면 사후 감사나 내역 확인 시 계산 근거를 알 수 없음
+
+---
+
+### 13. 정산 상태 전이는 단방향 — 되돌릴 수 없다
+
+```
+PENDING → CONFIRMED → PAID
+```
+
+역방향 전이(CONFIRMED → PENDING, PAID → CONFIRMED 등)는 모두 거절합니다.
+
+**이유**: 정산 확정·지급은 실제 금융 처리와 연결되는 행위로, 재처리를 허용하면 중복 지급 위험이 있음. 취소가 필요한 경우는 별도 프로세스(환불 내역 등록)로 처리해야 함
+
+---
+
+### 14. Jackson null 필드 제외 (`non_null`)
+
+```properties
+spring.jackson.default-property-inclusion=non_null
+```
+
+**이유**: PENDING 응답에 `"confirmedAt": null`, `"paidAt": null`이 포함되면 클라이언트가 "이 필드는 있지만 비어 있다"와 "이 필드 자체가 없다"를 구분해야 함. null 제외 설정으로 의미 없는 필드를 응답에서 생략하여 상태별 응답 크기를 최소화함

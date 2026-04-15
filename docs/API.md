@@ -234,38 +234,77 @@ GET /sale-records?creatorId={creatorId}&from={from}&to={to}
 
 ---
 
-## 6. 크리에이터 월별 정산 조회
+## 6. 크리에이터 월별 정산 조회 및 상태 관리
+
+### 정산 상태 흐름
+
+```
+PENDING → CONFIRMED → PAID
+```
+
+| 상태 | 의미 | DB 레코드 |
+|---|---|---|
+| PENDING | 미확정 (운영자 미승인) | 없음 — GET 시 동적 계산 |
+| CONFIRMED | 운영자 확정 완료, 스냅샷 저장 | 있음 |
+| PAID | 지급 완료, paidAt 기록 | 있음 |
+
+---
+
+### GET — 정산 조회
 
 ```
 GET /settlements/creators/{creatorId}?month={month}
 ```
 
-**Path Parameter**
-
-| 파라미터 | 타입 | 설명 |
-|---|---|---|
-| creatorId | String | 크리에이터 ID |
-
-**Query Parameter**
-
-| 파라미터 | 타입 | 설명 |
-|---|---|---|
-| month | String | 조회 연월 (예: 2025-03) |
+- DB에 확정 레코드가 없으면 `PENDING` 상태로 동적 계산 반환
+- CONFIRMED / PAID 이면 확정 시점의 스냅샷 반환 (이후 판매/취소 변동 미반영)
 
 **Response** `200 OK`
 ```json
 {
   "creatorId": "creator-1",
   "month": "2025-03",
+  "status": "PENDING",
   "totalSales": 260000,
   "totalRefunds": 110000,
   "netSales": 150000,
   "platformFee": 30000,
   "settlementAmount": 120000,
   "saleCount": 4,
-  "cancellationCount": 2
+  "cancellationCount": 2,
+  "confirmedAt": null,
+  "paidAt": null
 }
 ```
+
+---
+
+### PATCH — 상태 전환
+
+```
+PATCH /settlements/creators/{creatorId}?month={month}
+```
+
+**Request Body**
+
+```json
+{ "status": "CONFIRMED" }
+```
+
+| 요청 status | 동작 | 조건 |
+|---|---|---|
+| `CONFIRMED` | 정산 계산 → 스냅샷 저장 → CONFIRMED | 아직 레코드 없을 때만 |
+| `PAID` | paidAt 기록 → PAID | 기존 상태가 CONFIRMED일 때만 |
+| `PENDING` | 항상 400 | 직접 전환 불가 |
+
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| 이미 CONFIRMED인데 CONFIRMED 요청 | `"이미 확정된 정산입니다: ..."` |
+| PAID 상태에서 재전환 시도 | `"이미 지급 완료된 정산입니다: ..."` |
+| CONFIRMED 없이 PAID 요청 | `"확정되지 않은 정산입니다. 먼저 CONFIRMED 처리가 필요합니다: ..."` |
+| PENDING으로 직접 전환 요청 | `"PENDING으로 직접 전환할 수 없습니다."` |
 
 **계산 공식**
 ```
