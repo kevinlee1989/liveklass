@@ -31,7 +31,80 @@ Base URL: `http://localhost:8080`
 
 ---
 
-## 1. 판매 내역 등록
+## 1. 크리에이터 등록
+
+```
+POST /creators
+```
+
+**Request Body**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| id | String | Y | 크리에이터 ID |
+| name | String | Y | 크리에이터 이름 |
+
+**Request 예시**
+```json
+{
+  "id": "creator-10",
+  "name": "최강사"
+}
+```
+
+**Response** `201 Created`
+```json
+{ "id": "creator-10" }
+```
+
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| id가 이미 존재함 | `"이미 존재하는 크리에이터 ID입니다: creator-1"` |
+| 필수 필드 누락 (`@NotBlank`) | 해당 필드의 검증 메시지 |
+
+---
+
+## 2. 강의 등록
+
+```
+POST /courses
+```
+
+**Request Body**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| id | String | Y | 강의 ID |
+| creatorId | String | Y | 크리에이터 ID |
+| title | String | Y | 강의 제목 |
+
+**Request 예시**
+```json
+{
+  "id": "course-10",
+  "creatorId": "creator-1",
+  "title": "Redis 입문"
+}
+```
+
+**Response** `201 Created`
+```json
+{ "id": "course-10" }
+```
+
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| id가 이미 존재함 | `"이미 존재하는 강의 ID입니다: course-1"` |
+| creatorId가 존재하지 않음 | `"존재하지 않는 크리에이터입니다: creator-999"` |
+| 필수 필드 누락 (`@NotBlank`) | 해당 필드의 검증 메시지 |
+
+---
+
+## 3. 판매 내역 등록
 
 ```
 POST /sale-records
@@ -75,7 +148,7 @@ POST /sale-records
 
 ---
 
-## 2. 취소 내역 등록
+## 4. 취소 내역 등록
 
 ```
 POST /cancellation-records
@@ -117,7 +190,7 @@ POST /cancellation-records
 
 ---
 
-## 3. 판매 내역 목록 조회
+## 5. 판매 내역 목록 조회
 
 ```
 GET /sale-records?creatorId={creatorId}&from={from}&to={to}
@@ -161,7 +234,7 @@ GET /sale-records?creatorId={creatorId}&from={from}&to={to}
 
 ---
 
-## 4. 크리에이터 월별 정산 조회
+## 6. 크리에이터 월별 정산 조회
 
 ```
 GET /settlements/creators/{creatorId}?month={month}
@@ -203,7 +276,7 @@ GET /settlements/creators/{creatorId}?month={month}
 
 ---
 
-## 5. 운영자 기간별 집계 조회
+## 7. 운영자 기간별 집계 조회
 
 ```
 GET /settlements/summary?from={from}&to={to}
