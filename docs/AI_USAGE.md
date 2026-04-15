@@ -47,9 +47,7 @@
 - 월 경계를 `exclusive upper bound` 방식으로 처리하는 방법 제안 (`to+1일 00:00:00 미만`)
 - `paidAt` / `canceledAt` 분리 기준으로 정산 집계하는 구조 설계
 - 수수료율 상수 분리로 변경 가능성 반영 (`FEE_RATE`)
-- PENDING 상태를 DB에 저장하지 않는 설계 제안 (GET 시 동적 계산)
 - 정산 확정 시점의 전체 금액 필드를 스냅샷으로 저장하는 방식 제안
-- `RoundingMode.DOWN`으로 수수료 버림 처리 제안
 - Jackson `non_null` 설정으로 null 필드 응답 제외 제안
 
 ---
@@ -62,7 +60,8 @@
 - 전체 아키텍처 방향 결정 (도메인 중심 패키지, Spring Boot 기술 스택 선택)
 - 정산 상태 관리 설계 방향 결정 (PENDING/CONFIRMED/PAID 구분, 스냅샷 방식 채택)
 - 추가 테스트 케이스 항목 결정 (어떤 경계값을 검증할지, 어떤 edge case가 중요한지)
-
+- `RoundingMode.DOWN`으로 수수료 버림 처리 결정
+- PENDING 상태를 DB에 저장하지 않는 설계 결정 (GET 시 동적 계산)
 ---
 
 ## 유의사항
