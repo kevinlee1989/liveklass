@@ -35,7 +35,8 @@ src/test/java/com/example/
 └── settlement/
     ├── SettlementCalculationApiTest.java — 크리에이터 월별 정산 계산
     ├── SettlementSummaryApiTest.java     — 운영자 기간별 집계
-    └── SettlementEdgeCaseTest.java       — 정산 경계값 및 수수료 계산 검증
+    ├── SettlementEdgeCaseTest.java       — 정산 경계값 및 수수료 계산 검증
+    └── SettlementStatusTest.java         — 정산 확정 상태 전이 (PENDING/CONFIRMED/PAID)
 ```
 
 모든 테스트는 `@SpringBootTest` + `@Transactional` 조합으로 작성되었습니다.
@@ -253,6 +254,47 @@ src/test/java/com/example/
 
 ---
 
+## SettlementStatusTest — 정산 확정 상태 전이
+
+**대상 API:** `GET /settlements/creators/{creatorId}?month=` / `PATCH /settlements/creators/{creatorId}?month=`
+
+### PENDING (기본 상태)
+
+| 테스트 | 시나리오 | 기대 응답 |
+|---|---|---|
+| 확정전_GET_조회는_PENDING_반환 | 레코드 없이 GET 조회 | status: PENDING / confirmedAt 없음 / paidAt 없음 |
+
+### CONFIRMED 정상 전환
+
+| 테스트 | 시나리오 | 기대 응답 |
+|---|---|---|
+| CONFIRMED_요청시_스냅샷_저장 | `{ "status": "CONFIRMED" }` | status: CONFIRMED / 금액 스냅샷 저장 / confirmedAt 존재 |
+| CONFIRMED_후_GET_조회는_스냅샷_반환 | CONFIRMED 후 GET | status: CONFIRMED / settlementAmount 스냅샷 값 반환 |
+
+### PAID 정상 전환
+
+| 테스트 | 시나리오 | 기대 응답 |
+|---|---|---|
+| CONFIRMED_후_PAID_전환_성공 | CONFIRMED → `{ "status": "PAID" }` | status: PAID / confirmedAt + paidAt 모두 존재 |
+| PAID_후_GET_조회 | PAID 후 GET | status: PAID / paidAt 존재 |
+
+### 중복 정산 방지
+
+| 테스트 | 시나리오 | 기대 응답 |
+|---|---|---|
+| CONFIRMED_중복_요청시_400 | CONFIRMED → CONFIRMED 재요청 | `400` "이미 확정된 정산입니다" |
+| PAID_후_CONFIRMED_재요청시_400 | PAID 후 CONFIRMED 재요청 | `400` "이미 지급 완료된 정산입니다" |
+
+### 잘못된 전이 순서
+
+| 테스트 | 시나리오 | 기대 응답 |
+|---|---|---|
+| CONFIRMED_없이_PAID_요청시_400 | 레코드 없이 PAID 요청 | `400` "확정되지 않은 정산입니다" |
+| PAID_후_PAID_재요청시_400 | PAID → PAID 재요청 | `400` "이미 지급 완료된 정산입니다" (재지급 방지) |
+| PENDING_직접_전환_요청시_400 | `{ "status": "PENDING" }` 직접 요청 | `400` "PENDING으로 직접 전환할 수 없습니다." |
+
+---
+
 ## 전체 테스트 실행 결과 요약
 
 | 테스트 클래스 | 테스트 수 |
@@ -267,4 +309,5 @@ src/test/java/com/example/
 | SettlementCalculationApiTest | 6 |
 | SettlementSummaryApiTest | 8 |
 | SettlementEdgeCaseTest | 7 |
-| **합계** | **54** |
+| SettlementStatusTest | 11 |
+| **합계** | **65** |
