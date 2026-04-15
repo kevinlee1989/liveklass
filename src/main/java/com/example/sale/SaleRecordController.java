@@ -2,6 +2,7 @@ package com.example.sale;
 
 import com.example.sale.dto.SaleRecordRequest;
 import com.example.sale.dto.SaleRecordResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class SaleRecordController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, String> register(@RequestBody SaleRecordRequest request) {
+    public Map<String, String> register(@Valid @RequestBody SaleRecordRequest request) {
         String id = saleRecordService.register(request);
         return Map.of("id", id);
     }

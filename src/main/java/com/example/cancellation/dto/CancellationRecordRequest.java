@@ -1,11 +1,15 @@
 package com.example.cancellation.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 public record CancellationRecordRequest(
-        String saleRecordId,
-        BigDecimal refundAmount,
-        OffsetDateTime canceledAt
+        @NotBlank String saleRecordId,
+        @NotNull @Positive BigDecimal refundAmount,
+        @NotNull OffsetDateTime canceledAt
 ) {
 }

@@ -1,13 +1,17 @@
 package com.example.sale.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 public record SaleRecordRequest(
-        String id,
-        String courseId,
-        String studentId,
-        BigDecimal amount,
-        OffsetDateTime paidAt
+        @NotBlank String id,
+        @NotBlank String courseId,
+        @NotBlank String studentId,
+        @NotNull @Positive BigDecimal amount,
+        @NotNull OffsetDateTime paidAt
 ) {
 }

@@ -21,4 +21,7 @@ public interface CancellationRecordRepository extends JpaRepository<Cancellation
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to
     );
+
+    @Query("SELECT COALESCE(SUM(c.refundAmount), 0) FROM CancellationRecord c WHERE c.saleRecord.id = :saleRecordId")
+    java.math.BigDecimal sumRefundAmountBySaleRecordId(@Param("saleRecordId") String saleRecordId);
 }

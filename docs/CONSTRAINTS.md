@@ -18,9 +18,18 @@
 | 항목 | 비고 |
 |---|---|
 | Creator / Course 등록 API | DataInitializer로 초기 데이터만 삽입, 런타임 등록 불가 |
-| 입력값 유효성 검증 (@Valid) | 필수 필드 누락 시 명확한 에러 메시지 없음 |
-| 글로벌 예외 핸들러 | IllegalArgumentException이 500으로 응답될 수 있음 |
 | 페이지네이션 | 판매 목록 조회 시 전체 반환 |
+
+---
+
+## 구현된 항목 (초기 미구현에서 전환)
+
+| 항목 | 구현 방식 |
+|---|---|
+| 입력값 유효성 검증 | DTO에 `@NotBlank` / `@NotNull` / `@Positive` + Controller에 `@Valid` 적용 |
+| 글로벌 예외 핸들러 | `GlobalExceptionHandler` (`@RestControllerAdvice`) — `IllegalArgumentException` → 400, `MethodArgumentNotValidException` → 400, `HttpMessageNotReadableException` → 400, 그 외 → 500 |
+| 누적 환불 초과 방지 | `CancellationRecordService`에서 기존 환불 합계 조회 후 서비스 레이어 검증 |
+| 중복 판매 ID 방지 | `SaleRecordService`에서 `existsById` 선조회 후 중복 시 400 반환 |
 
 ---
 

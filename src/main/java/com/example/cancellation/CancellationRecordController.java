@@ -1,6 +1,7 @@
 package com.example.cancellation;
 
 import com.example.cancellation.dto.CancellationRecordRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +21,7 @@ public class CancellationRecordController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Long> register(@RequestBody CancellationRecordRequest request) {
+    public Map<String, Long> register(@Valid @RequestBody CancellationRecordRequest request) {
         Long id = cancellationRecordService.register(request);
         return Map.of("id", id);
     }

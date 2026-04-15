@@ -77,3 +77,63 @@ netSales.multiply(FEE_RATE).setScale(0, RoundingMode.DOWN)
 `ApplicationRunner`를 구현한 `DataInitializer`가 앱 시작 시 과제 샘플 데이터를 자동 삽입.
 
 **이유**: `ddl-auto=create-drop`으로 앱 재시작마다 테이블이 초기화되므로, 매번 수동으로 데이터를 넣지 않아도 즉시 테스트 가능
+
+---
+
+### 7. GlobalExceptionHandler로 에러 응답 일원화
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler { ... }
+```
+
+| 처리 예외 | 응답 코드 | 설명 |
+|---|---|---|
+| `IllegalArgumentException` | 400 | 비즈니스 규칙 위반 (존재하지 않는 ID, 중복 ID, 환불 초과 등) |
+| `MethodArgumentNotValidException` | 400 | `@Valid` Bean Validation 실패 |
+| `HttpMessageNotReadableException` | 400 | JSON 파싱 실패 (OffsetDateTime 형식 오류 등) |
+| `Exception` (fallback) | 500 | 예상치 못한 오류 |
+
+**이유**: 예외 처리를 각 Controller에 분산하지 않고 한 곳에서 관리. 응답 형식(`{ "status": ..., "message": ... }`)이 모든 에러에서 일관됨
+
+---
+
+### 8. Bean Validation (@Valid) + 커스텀 메시지 없이 기본 메시지 사용
+
+```java
+public record SaleRecordRequest(
+    @NotBlank String id,
+    @NotBlank String courseId,
+    @NotBlank String studentId,
+    @NotNull @Positive BigDecimal amount,
+    @NotNull OffsetDateTime paidAt
+) {}
+```
+
+**이유**: 필드별 커스텀 메시지 없이 기본 메시지를 사용. 필드 이름과 제약 조건이 명확하므로 추가 메시지 없이도 충분히 의미 전달 가능. GlobalExceptionHandler에서 모든 FieldError 메시지를 Join하여 단일 문자열로 반환
+
+---
+
+### 9. 누적 환불 초과 검증은 서비스 레이어에서 처리
+
+```java
+BigDecimal existingRefunds = cancellationRecordRepository.sumRefundAmountBySaleRecordId(saleRecord.getId());
+BigDecimal totalRefund = existingRefunds.add(request.refundAmount());
+if (totalRefund.compareTo(saleRecord.getAmount()) > 0) {
+    throw new IllegalArgumentException("누적 환불 금액이 원결제 금액을 초과합니다...");
+}
+```
+
+**이유**: DB 제약(CHECK constraint)으로는 "다른 레코드의 합산"을 표현하기 어려움. 서비스 레이어에서 SELECT → 검증 → INSERT 순서로 처리. COALESCE(SUM, 0) 쿼리로 환불 이력이 없는 경우도 0 처리
+
+---
+
+### 10. 판매 내역 중복 ID는 서비스 레이어에서 선조회 후 거절
+
+```java
+if (saleRecordRepository.existsById(request.id())) {
+    throw new IllegalArgumentException("이미 존재하는 판매 내역 ID입니다: " + request.id());
+}
+```
+
+**이유**: Spring Data JPA의 `save()`는 ID가 존재하면 UPDATE(upsert)를 수행하므로 중복 ID를 자동으로 거절하지 않음. `existsById` 선조회로 명시적으로 방지하고 400 반환

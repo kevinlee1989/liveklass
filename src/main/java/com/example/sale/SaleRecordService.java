@@ -44,9 +44,17 @@ public class SaleRecordService {
 
     @Transactional(readOnly = true)
     public List<SaleRecordResponse> getList(String creatorId, LocalDate from, LocalDate to) {
+        if ((from == null) != (to == null)) {
+            throw new IllegalArgumentException("from과 to는 함께 입력하거나 함께 생략해야 합니다.");
+        }
+
+        if (from != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("시작일(from)은 종료일(to)보다 늦을 수 없습니다.");
+        }
+
         List<SaleRecord> records;
 
-        if (from != null && to != null) {
+        if (from != null) {
             OffsetDateTime fromDt = from.atStartOfDay(KST).toOffsetDateTime();
             OffsetDateTime toDt = to.plusDays(1).atStartOfDay(KST).toOffsetDateTime();
             records = saleRecordRepository.findByCreatorAndPaidAtBetween(creatorId, fromDt, toDt);

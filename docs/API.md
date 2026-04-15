@@ -17,8 +17,17 @@ Base URL: `http://localhost:8080`
 
 | HTTP 상태 | 발생 조건 |
 |---|---|
-| `400 Bad Request` | 요청값이 유효하지 않음 (존재하지 않는 ID 등) |
+| `400 Bad Request` | 필수 필드 누락, 형식 오류, 비즈니스 규칙 위반 (존재하지 않는 ID, 중복 ID, 환불 초과 등) |
 | `500 Internal Server Error` | 서버 내부 오류 |
+
+에러 처리는 `GlobalExceptionHandler` (`@RestControllerAdvice`)에서 일괄 처리합니다.
+
+| 예외 타입 | 응답 코드 | 예시 |
+|---|---|---|
+| `IllegalArgumentException` | 400 | 존재하지 않는 ID, 중복 ID, 환불 초과, 날짜 파라미터 오류 |
+| `MethodArgumentNotValidException` | 400 | `@Valid` 검증 실패 (필수 필드 누락, 음수 금액 등) |
+| `HttpMessageNotReadableException` | 400 | JSON 파싱 실패 (OffsetDateTime 형식 오류 등) |
+| 그 외 `Exception` | 500 | 예상치 못한 서버 오류 |
 
 ---
 
@@ -54,10 +63,15 @@ POST /sale-records
 { "id": "sale-8" }
 ```
 
-**에러** `400 Bad Request` — courseId가 존재하지 않을 경우
-```json
-{ "status": 400, "message": "존재하지 않는 강의입니다: course-999" }
-```
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| courseId가 존재하지 않음 | `"존재하지 않는 강의입니다: course-999"` |
+| id가 이미 존재함 | `"이미 존재하는 판매 내역 ID입니다: sale-1"` |
+| 필수 필드 누락 (`@NotBlank` / `@NotNull`) | 해당 필드의 검증 메시지 |
+| `amount` ≤ 0 (`@Positive`) | 검증 메시지 |
+| `paidAt` 형식 오류 (날짜만 입력 등) | `"요청 형식이 올바르지 않습니다."` |
 
 ---
 
@@ -89,10 +103,17 @@ POST /cancellation-records
 { "id": 1 }
 ```
 
-**에러** `400 Bad Request` — saleRecordId가 존재하지 않을 경우
-```json
-{ "status": 400, "message": "존재하지 않는 판매 내역입니다: sale-999" }
-```
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| saleRecordId가 존재하지 않음 | `"존재하지 않는 판매 내역입니다: sale-999"` |
+| 누적 환불 합계가 원결제 금액 초과 | `"누적 환불 금액이 원결제 금액을 초과합니다. 원결제: ..., 기존 환불 합계: ..., 요청 환불: ..."` |
+| 필수 필드 누락 (`@NotBlank` / `@NotNull`) | 해당 필드의 검증 메시지 |
+| `refundAmount` ≤ 0 (`@Positive`) | 검증 메시지 |
+| `canceledAt` 형식 오류 | `"요청 형식이 올바르지 않습니다."` |
+
+> **누적 환불 규칙:** `기존 환불 합계 + 이번 환불 요청 > 원결제 금액`이면 거절합니다. 부분 환불은 허용되며, 여러 번에 걸쳐 환불하더라도 합산 금액이 원결제를 넘으면 안 됩니다.
 
 ---
 
@@ -111,7 +132,9 @@ GET /sale-records?creatorId={creatorId}&from={from}&to={to}
 | to | LocalDate | N | 조회 종료일 (예: 2025-03-31) |
 
 - `from`, `to` 모두 없으면 해당 크리에이터의 전체 판매 내역 반환
-- 기간 기준: `paidAt` (KST)
+- `from`만 또는 `to`만 입력하면 `400 Bad Request`
+- `from`이 `to`보다 늦으면 `400 Bad Request`
+- 기간 기준: `paidAt` (KST), `from`일 00:00:00 이상 ~ `to`일 다음날 00:00:00 미만 (종료일 당일 포함)
 
 **Response** `200 OK`
 ```json
@@ -127,6 +150,14 @@ GET /sale-records?creatorId={creatorId}&from={from}&to={to}
   }
 ]
 ```
+
+**에러 케이스**
+
+| 조건 | 메시지 |
+|---|---|
+| `from`만 입력, `to` 없음 | `"from과 to는 함께 입력하거나 함께 생략해야 합니다."` |
+| `to`만 입력, `from` 없음 | `"from과 to는 함께 입력하거나 함께 생략해야 합니다."` |
+| `from`이 `to`보다 늦음 | `"시작일(from)은 종료일(to)보다 늦을 수 없습니다."` |
 
 ---
 
