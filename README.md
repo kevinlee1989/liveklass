@@ -136,4 +136,3 @@ docker-compose up -d
 | [설계 결정](docs/DECISIONS.md) | 요구사항 해석, 가정, 결정 이유 14가지 |
 | [테스트 실행](docs/TESTING.md) | 테스트 방법, 시나리오 54개 |
 | [미구현 / 제약사항](docs/CONSTRAINTS.md) | 구현 범위 밖의 항목 |
-| [AI 활용 범위](docs/AI_USAGE.md) | AI 도구 사용 내역 |

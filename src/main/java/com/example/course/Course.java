@@ -30,4 +30,9 @@ public class Course {
         course.title = title;
         return course;
     }
+
+    // 제목 변경 메소드 추가 
+    public void changeTitle(String title){
+        this.title = title;
+    }
 }

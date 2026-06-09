@@ -1,9 +1,12 @@
 package com.example.creator;
 
 import com.example.creator.dto.CreatorRequest;
+import com.example.creator.dto.CreatorResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -19,5 +22,10 @@ public class CreatorService {
 
         Creator creator = Creator.of(request.id(), request.name());
         return creatorRepository.save(creator).getId();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CreatorResponse> findAll(){
+        return creatorRepository.findAll().stream().map(CreatorResponse::from).toList();
     }
 }

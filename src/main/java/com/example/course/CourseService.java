@@ -1,11 +1,15 @@
 package com.example.course;
 
-import com.example.course.dto.CourseRequest;
-import com.example.creator.Creator;
-import com.example.creator.CreatorRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.example.course.dto.CourseRequest;
+import com.example.course.dto.CourseResponse;
+import com.example.course.dto.CourseTitleUpdateRequest;
+import com.example.creator.Creator;
+import com.example.creator.CreatorRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -25,5 +29,23 @@ public class CourseService {
 
         Course course = Course.of(request.id(), creator, request.title());
         return courseRepository.save(course).getId();
+    }
+
+    @Transactional
+    public CourseResponse updateTitle(String courseId, CourseTitleUpdateRequest request){
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지않는 강의이다 " + courseId));
+
+            course.changeTitle(request.title());
+
+            return CourseResponse.from(course);
+    }
+
+    @Transactional
+    public void delete(String courseId){
+        Course course = courseRepository.findById(courseId)
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 강의"));
+
+        courseRepository.delete(course);
     }
 }
