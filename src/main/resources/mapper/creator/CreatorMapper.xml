@@ -19,4 +19,7 @@
         SELECT id, name FROM creators WHERE id = #{id}
     </select>
 
+    <delete id="deleteById">
+        DELETE FROM creators WHERE id = #{id}
+    </delete>
 </mapper>

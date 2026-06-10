@@ -30,4 +30,13 @@ public class CreatorService {
     public List<CreatorResponse> findAll(){
         return creatorMapper.findAll().stream().map(CreatorResponse::from).toList();
     }
+
+    @Transactional
+    public void delete(String creatorId){
+        if(!creatorMapper.existsById(creatorId)) {
+            throw new IllegalArgumentException("존재하지않는 강사입니다 " + creatorId);
+        }
+
+        creatorMapper.deleteById(creatorId);
+    }
 }

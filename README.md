@@ -94,6 +94,7 @@
 |---|---|---|
 | `POST` | `/creators` | 크리에이터 등록 |
 | `GET` | `/creators` | 전체 크리에이터 목록 조회 |
+| `DELETE` | `/creators/{creatorId}` | 크리에이터 삭제 |
 
 ### Course (강의)
 

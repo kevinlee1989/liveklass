@@ -11,4 +11,5 @@ public interface CreatorMapper {
     void insert(Creator creator);
     List<Creator> findAll();
     Optional<Creator> findById(String id);
+    void deleteById(String id);
 }
