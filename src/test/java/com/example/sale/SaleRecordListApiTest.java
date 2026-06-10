@@ -1,32 +1,14 @@
 package com.example.sale;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.example.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@Transactional
-class SaleRecordListApiTest {
-
-    @Autowired
-    WebApplicationContext context;
-
-    MockMvc mockMvc;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-    }
+class SaleRecordListApiTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("기간 필터 없이 조회하면 크리에이터의 전체 판매 내역을 반환한다")

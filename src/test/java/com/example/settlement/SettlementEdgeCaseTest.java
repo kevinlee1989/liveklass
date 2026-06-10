@@ -1,42 +1,22 @@
 package com.example.settlement;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.example.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@Transactional
-class SettlementEdgeCaseTest {
-
-    @Autowired
-    WebApplicationContext context;
-
-    MockMvc mockMvc;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-    }
+class SettlementEdgeCaseTest extends BaseIntegrationTest {
 
     // ── 순판매금액 = 0 ─────────────────────────────────────────────
 
     @Test
     @DisplayName("판매금액과 환불금액이 동일하면 수수료는 0이고 정산금액도 0이다")
     void 순판매금액이_0이면_수수료와_정산금액도_0() throws Exception {
-        // creator-3, course-4, 2025-04: 50,000 판매 → 50,000 전액 환불
-        // netSales = 0 → platformFee = 0 → settlementAmount = 0
         mockMvc.perform(post("/sale-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -78,8 +58,6 @@ class SettlementEdgeCaseTest {
     @Test
     @DisplayName("수수료 계산은 소수점 이하를 버림으로 처리한다 — 999 × 20% = 199.8 → 199원")
     void 수수료_소수점_버림_999원() throws Exception {
-        // 999 * 0.20 = 199.8 → DOWN(버림) = 199 / HALF_UP(반올림) = 200
-        // platformFee = 199 이어야 한다
         mockMvc.perform(post("/sale-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -104,8 +82,6 @@ class SettlementEdgeCaseTest {
     @Test
     @DisplayName("수수료 계산은 소수점 이하를 버림으로 처리한다 — 1001 × 20% = 200.2 → 200원")
     void 수수료_소수점_버림_1001원() throws Exception {
-        // 1001 * 0.20 = 200.2 → DOWN(버림) = 200 / CEILING(올림) = 201
-        // platformFee = 200 이어야 한다
         mockMvc.perform(post("/sale-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -132,10 +108,6 @@ class SettlementEdgeCaseTest {
     @Test
     @DisplayName("순판매금액이 음수이면 수수료도 음수로 계산되어 정산금액에서 차감이 환원된다")
     void 순판매금액_음수일때_수수료_확인() throws Exception {
-        // creator-2, 2025-02: sale=0(1월 판매라 제외), refund=60,000(cancel-3)
-        // netSales = -60,000
-        // fee = -60,000 * 0.20 = -12,000 (DOWN: 0 방향 버림)
-        // settlementAmount = -60,000 - (-12,000) = -48,000
         mockMvc.perform(get("/settlements/creators/creator-2")
                         .param("month", "2025-02"))
                 .andExpect(status().isOk())
@@ -151,8 +123,6 @@ class SettlementEdgeCaseTest {
     @Test
     @DisplayName("판매와 환불이 모두 있어 netSales=0인 크리에이터는 summary 목록에 포함된다")
     void 순판매금액_0인_크리에이터_summary에_포함() throws Exception {
-        // creator-3, 2025-04: 50,000 판매 + 50,000 전액환불 → settlementAmount = 0
-        // summary에서 판매 또는 취소가 있는 크리에이터는 포함된다
         mockMvc.perform(post("/sale-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -193,10 +163,6 @@ class SettlementEdgeCaseTest {
     @Test
     @DisplayName("여러 건 판매와 여러 건 부분 환불의 합산이 정확하게 계산된다")
     void 여러건_판매_여러건_부분환불_합산_정확성() throws Exception {
-        // creator-3, course-4, 2025-04
-        // 판매 3건: 10,000 + 20,000 + 30,000 = 60,000
-        // 부분환불 2건: 5,000 + 7,000 = 12,000
-        // netSales = 48,000 / fee = 48,000 * 0.20 = 9,600 / settlementAmount = 38,400
         mockMvc.perform(post("/sale-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

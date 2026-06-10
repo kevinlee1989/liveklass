@@ -10,7 +10,7 @@ public record CourseResponse(
     public static CourseResponse from(Course course) {
         return new CourseResponse(
                 course.getId(),
-                course.getCreator().getId(),
+                course.getCreatorId(),
                 course.getTitle()
         );
     }

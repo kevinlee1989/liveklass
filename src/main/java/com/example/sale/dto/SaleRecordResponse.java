@@ -1,5 +1,6 @@
 package com.example.sale.dto;
 
+import com.example.course.Course;
 import com.example.sale.SaleRecord;
 
 import java.math.BigDecimal;
@@ -14,12 +15,12 @@ public record SaleRecordResponse(
         BigDecimal amount,
         OffsetDateTime paidAt
 ) {
-    public static SaleRecordResponse from(SaleRecord saleRecord) {
+    public static SaleRecordResponse from(SaleRecord saleRecord, Course course) {
         return new SaleRecordResponse(
                 saleRecord.getId(),
-                saleRecord.getCourse().getId(),
-                saleRecord.getCourse().getTitle(),
-                saleRecord.getCourse().getCreator().getId(),
+                course.getId(),
+                course.getTitle(),
+                course.getCreatorId(),
                 saleRecord.getStudentId(),
                 saleRecord.getAmount(),
                 saleRecord.getPaidAt()

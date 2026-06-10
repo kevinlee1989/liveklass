@@ -6,8 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.course.dto.CourseRequest;
 import com.example.course.dto.CourseResponse;
 import com.example.course.dto.CourseTitleUpdateRequest;
-import com.example.creator.Creator;
-import com.example.creator.CreatorRepository;
+import com.example.creator.CreatorMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,37 +14,41 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CourseService {
 
-    private final CourseRepository courseRepository;
-    private final CreatorRepository creatorRepository;
+    private final CourseMapper courseMapper;
+    private final CreatorMapper creatorMapper;
 
     @Transactional
     public String register(CourseRequest request) {
-        if (courseRepository.existsById(request.id())) {
+        if (courseMapper.existsById(request.id())) {
             throw new IllegalArgumentException("이미 존재하는 강의 ID입니다: " + request.id());
         }
 
-        Creator creator = creatorRepository.findById(request.creatorId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 크리에이터입니다: " + request.creatorId()));
+        if (!creatorMapper.existsById(request.creatorId())) {
+            throw new IllegalArgumentException("존재하지 않는 크리에이터입니다: " + request.creatorId());
+        }
 
-        Course course = Course.of(request.id(), creator, request.title());
-        return courseRepository.save(course).getId();
+        Course course = Course.of(request.id(), request.creatorId(), request.title());
+        courseMapper.insert(course);
+        return course.getId();
     }
 
     @Transactional
-    public CourseResponse updateTitle(String courseId, CourseTitleUpdateRequest request){
-        Course course = courseRepository.findById(courseId)
+    public CourseResponse updateTitle(String courseId, CourseTitleUpdateRequest request) {
+        Course course = courseMapper.findById(courseId)
             .orElseThrow(() -> new IllegalArgumentException("존재하지않는 강의이다 " + courseId));
 
-            course.changeTitle(request.title());
+        course.update(request.title());
+        courseMapper.update(course);
 
-            return CourseResponse.from(course);
+        return CourseResponse.from(course);
     }
 
     @Transactional
-    public void delete(String courseId){
-        Course course = courseRepository.findById(courseId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 강의"));
+    public void delete(String courseId) {
+        if (!courseMapper.existsById(courseId)) {
+            throw new IllegalArgumentException("존재하지않는 강의이다 " + courseId);
+        }
 
-        courseRepository.delete(course);
+        courseMapper.deleteById(courseId);
     }
 }

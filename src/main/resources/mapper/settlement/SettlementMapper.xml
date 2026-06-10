@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.settlement.SettlementMapper">
+
+    <resultMap id="settlementResultMap" type="com.example.settlement.Settlement">
+        <id property="id" column="id"/>
+        <result property="creatorId" column="creator_id"/>
+        <result property="month" column="month"/>
+        <result property="status" column="status"/>
+        <result property="totalSales" column="total_sales"/>
+        <result property="totalRefunds" column="total_refunds"/>
+        <result property="netSales" column="net_sales"/>
+        <result property="platformFee" column="platform_fee"/>
+        <result property="settlementAmount" column="settlement_amount"/>
+        <result property="saleCount" column="sale_count"/>
+        <result property="cancellationCount" column="cancellation_count"/>
+        <result property="confirmedAt" column="confirmed_at"/>
+        <result property="paidAt" column="paid_at"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO settlements (
+            creator_id, month, status,
+            total_sales, total_refunds, net_sales, platform_fee, settlement_amount,
+            sale_count, cancellation_count, confirmed_at, paid_at
+        ) VALUES (
+            #{creatorId}, #{month}, #{status},
+            #{totalSales}, #{totalRefunds}, #{netSales}, #{platformFee}, #{settlementAmount},
+            #{saleCount}, #{cancellationCount}, #{confirmedAt}, #{paidAt}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE settlements
+        SET status = #{status}, paid_at = #{paidAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByCreatorIdAndMonth" resultMap="settlementResultMap">
+        SELECT id, creator_id, month, status,
+               total_sales, total_refunds, net_sales, platform_fee, settlement_amount,
+               sale_count, cancellation_count, confirmed_at, paid_at
+        FROM settlements
+        WHERE creator_id = #{creatorId} AND month = #{month}
+    </select>
+
+</mapper>

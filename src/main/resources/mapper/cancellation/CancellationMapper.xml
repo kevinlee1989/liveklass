@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.cancellation.CancellationRecordMapper">
+
+    <resultMap id="cancellationRecordResultMap" type="com.example.cancellation.CancellationRecord">
+        <id property="id" column="id"/>
+        <result property="saleRecordId" column="sale_record_id"/>
+        <result property="refundAmount" column="refund_amount"/>
+        <result property="canceledAt" column="canceled_at"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cancellation_records (sale_record_id, refund_amount, canceled_at)
+        VALUES (#{saleRecordId}, #{refundAmount}, #{canceledAt})
+    </insert>
+
+    <select id="sumRefundAmountBySaleRecordId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(refund_amount), 0)
+        FROM cancellation_records
+        WHERE sale_record_id = #{saleRecordId}
+    </select>
+
+    <select id="findByCanceledAtBetween" resultMap="cancellationRecordResultMap">
+        SELECT id, sale_record_id, refund_amount, canceled_at
+        FROM cancellation_records
+        WHERE canceled_at >= #{from} AND canceled_at &lt; #{to}
+    </select>
+
+    <select id="findByCreatorAndCanceledAtBetween" resultMap="cancellationRecordResultMap">
+        SELECT cr.id, cr.sale_record_id, cr.refund_amount, cr.canceled_at
+        FROM cancellation_records cr
+        JOIN sale_records sr ON cr.sale_record_id = sr.id
+        JOIN courses c ON sr.course_id = c.id
+        WHERE c.creator_id = #{creatorId}
+          AND cr.canceled_at >= #{from}
+          AND cr.canceled_at &lt; #{to}
+    </select>
+
+</mapper>

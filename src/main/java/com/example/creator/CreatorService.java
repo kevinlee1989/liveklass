@@ -12,20 +12,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CreatorService {
 
-    private final CreatorRepository creatorRepository;
+    private final CreatorMapper creatorMapper;
 
     @Transactional
     public String register(CreatorRequest request) {
-        if (creatorRepository.existsById(request.id())) {
+        if (creatorMapper.existsById(request.id())) {
             throw new IllegalArgumentException("이미 존재하는 크리에이터 ID입니다: " + request.id());
         }
 
         Creator creator = Creator.of(request.id(), request.name());
-        return creatorRepository.save(creator).getId();
+        creatorMapper.insert(creator);
+
+        return creator.getId();
     }
 
     @Transactional(readOnly = true)
     public List<CreatorResponse> findAll(){
-        return creatorRepository.findAll().stream().map(CreatorResponse::from).toList();
+        return creatorMapper.findAll().stream().map(CreatorResponse::from).toList();
     }
 }

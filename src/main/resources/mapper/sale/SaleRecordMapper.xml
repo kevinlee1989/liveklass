@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.sale.SaleRecordMapper">
+
+    <resultMap id="saleRecordResultMap" type="com.example.sale.SaleRecord">
+        <id property="id" column="id"/>
+        <result property="courseId" column="course_id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="amount" column="amount"/>
+        <result property="paidAt" column="paid_at"/>
+    </resultMap>
+
+    <select id="existsById" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM sale_records WHERE id = #{id}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO sale_records (id, course_id, student_id, amount, paid_at)
+        VALUES (#{id}, #{courseId}, #{studentId}, #{amount}, #{paidAt})
+    </insert>
+
+    <select id="findById" resultMap="saleRecordResultMap">
+        SELECT id, course_id, student_id, amount, paid_at FROM sale_records WHERE id = #{id}
+    </select>
+
+    <select id="findByCreatorId" resultMap="saleRecordResultMap">
+        SELECT s.id, s.course_id, s.student_id, s.amount, s.paid_at
+        FROM sale_records s
+        JOIN courses c ON s.course_id = c.id
+        WHERE c.creator_id = #{creatorId}
+    </select>
+
+    <select id="findByCreatorAndPaidAtBetween" resultMap="saleRecordResultMap">
+        SELECT s.id, s.course_id, s.student_id, s.amount, s.paid_at
+        FROM sale_records s
+        JOIN courses c ON s.course_id = c.id
+        WHERE c.creator_id = #{creatorId} AND s.paid_at >= #{from} AND s.paid_at &lt; #{to}
+    </select>
+
+    <select id="findByPaidAtBetween" resultMap="saleRecordResultMap">
+        SELECT id, course_id, student_id, amount, paid_at
+        FROM sale_records
+        WHERE paid_at >= #{from} AND paid_at &lt; #{to}
+    </select>
+
+</mapper>

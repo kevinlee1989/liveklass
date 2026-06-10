@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.course.CourseMapper">
+
+    <select id="existsById" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM courses WHERE id = #{id}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO courses (id, creator_id, title) VALUES (#{id}, #{creatorId}, #{title})
+    </insert>
+
+    <select id="findById" resultType="com.example.course.Course">
+        SELECT id, creator_id AS creatorId, title FROM courses WHERE id = #{id}
+    </select>
+
+    <update id="update">
+        UPDATE courses SET title = #{title} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM courses WHERE id = #{id}
+    </delete>
+
+</mapper>

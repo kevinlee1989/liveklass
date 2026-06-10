@@ -1,7 +1,7 @@
 package com.example.sale;
 
 import com.example.course.Course;
-import com.example.course.CourseRepository;
+import com.example.course.CourseMapper;
 import com.example.sale.dto.SaleRecordRequest;
 import com.example.sale.dto.SaleRecordResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,27 +19,29 @@ public class SaleRecordService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    private final SaleRecordRepository saleRecordRepository;
-    private final CourseRepository courseRepository;
+    private final SaleRecordMapper saleRecordMapper;
+    private final CourseMapper courseMapper;
 
     @Transactional
     public String register(SaleRecordRequest request) {
-        if (saleRecordRepository.existsById(request.id())) {
+        if (saleRecordMapper.existsById(request.id())) {
             throw new IllegalArgumentException("이미 존재하는 판매 내역 ID입니다: " + request.id());
         }
 
-        Course course = courseRepository.findById(request.courseId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 강의입니다: " + request.courseId()));
+        if (!courseMapper.existsById(request.courseId())) {
+            throw new IllegalArgumentException("존재하지 않는 강의입니다: " + request.courseId());
+        }
 
         SaleRecord saleRecord = SaleRecord.of(
                 request.id(),
-                course,
+                request.courseId(),
                 request.studentId(),
                 request.amount(),
                 request.paidAt()
         );
 
-        return saleRecordRepository.save(saleRecord).getId();
+        saleRecordMapper.insert(saleRecord);
+        return saleRecord.getId();
     }
 
     @Transactional(readOnly = true)
@@ -57,11 +59,15 @@ public class SaleRecordService {
         if (from != null) {
             OffsetDateTime fromDt = from.atStartOfDay(KST).toOffsetDateTime();
             OffsetDateTime toDt = to.plusDays(1).atStartOfDay(KST).toOffsetDateTime();
-            records = saleRecordRepository.findByCreatorAndPaidAtBetween(creatorId, fromDt, toDt);
+            records = saleRecordMapper.findByCreatorAndPaidAtBetween(creatorId, fromDt, toDt);
         } else {
-            records = saleRecordRepository.findByCreatorId(creatorId);
+            records = saleRecordMapper.findByCreatorId(creatorId);
         }
 
-        return records.stream().map(SaleRecordResponse::from).toList();
+        return records.stream().map(record -> {
+            Course course = courseMapper.findById(record.getCourseId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 강의입니다: " + record.getCourseId()));
+            return SaleRecordResponse.from(record, course);
+        }).toList();
     }
 }
