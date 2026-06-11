@@ -1,5 +1,7 @@
 package com.example.course;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,14 @@ public class CourseService {
 
     private final CourseMapper courseMapper;
     private final CreatorMapper creatorMapper;
+
+    @Transactional(readOnly = true)
+    public List<CourseResponse> getList(String creatorId) {
+        List<Course> courses = creatorId != null
+                ? courseMapper.findByCreatorId(creatorId)
+                : courseMapper.findAll();
+        return courses.stream().map(CourseResponse::from).toList();
+    }
 
     @Transactional
     public String register(CourseRequest request) {

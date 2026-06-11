@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -16,6 +17,13 @@ import java.util.Map;
 public class CourseController {
 
     private final CourseService courseService;
+
+    @GetMapping
+    public List<CourseResponse> getList(
+            @RequestParam(required = false) String creatorId
+    ) {
+        return courseService.getList(creatorId);
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

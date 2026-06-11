@@ -15,6 +15,14 @@
         SELECT id, creator_id AS creatorId, title FROM courses WHERE id = #{id}
     </select>
 
+    <select id="findAll" resultType="com.example.course.Course">
+        SELECT id, creator_id AS creatorId, title FROM courses ORDER BY id
+    </select>
+
+    <select id="findByCreatorId" resultType="com.example.course.Course">
+        SELECT id, creator_id AS creatorId, title FROM courses WHERE creator_id = #{creatorId} ORDER BY id
+    </select>
+
     <update id="update">
         UPDATE courses SET title = #{title} WHERE id = #{id}
     </update>
